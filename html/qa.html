@@ -1,0 +1,373 @@
+<html>
+<head>
+    <title>askFDALabel - v1</title>
+    {% load static %}
+    <script type="text/html" src='{% static "js/jquery-3.6.1.min.js"  %}'></script>
+    <script type="text/html" src='{% static "js/bootstrap.bundle.min.js"  %}'></script>
+    
+    <link rel="stylesheet" type="text/html" href='{% static "css/bootstrap.min.css" %}' />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family:emoji, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #c1c1c1;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .messages {
+            height: 400px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .input {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .input input {
+            flex: 1;
+            margin-right: 10px;
+            border: none;
+            background-color: transparent;
+            font-size: 16px;
+        }
+        
+        .input button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .System {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #dff9fb;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        .assistant {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #dff9fb;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        
+        .user {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            text-align: right;
+        }
+
+        .assistant_button {
+            text-align: right;
+        }
+    </style>
+
+    <style>
+        .icon-container {
+            text-align: right;
+            top: 10px;
+            right: 20px;
+        }
+        
+        .icon-container i {
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        
+        /* Example hover effect for the icons */
+        .icon-container i:hover {
+            color: blue;
+        }
+
+        /* Basic style for the popup */
+        #Reference {
+            position: fixed; 
+            top: 50%; 
+            left: 50%;
+            opacity: 1;
+            transform: translate(-50%, -50%); 
+            padding: 20px;
+            background-color: #FFF;
+            color: #222;
+            font-size:70%;
+            border: 1px solid #ddd;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style='text-align:center'>askFDALabel - v1</h1>
+        <hr>
+        <div class="messages" id="messages">
+            {% csrf_token %}
+            <div class="System">
+                Hello! I am askFDALabel&#128515;, here to help navigate the drug labeling documents. 
+			    Try ask me questions like "what is the adverse reaction reported for abacavir?"
+            </div>
+            <div class="System">
+                &#128526;&#128526;&#128526;<br>
+                For exact drug search, please use curly bracket like "what is the adverse reaction reported for <i style='color:red'>{abacavir}</i>?"
+            </div>
+        </div>
+        <div class="parameters">
+            <div class='row' style='margin:15 30% 0 30%;'>
+                <div class="custom-control custom-checkbox">
+                        <input type="checkbox" checked class="custom-control-input" id="history_check">
+                        <label class="custom-control-label" for="myCheckbox">History Included</label>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="clearDiv()">Clear History/Logs</button>
+            </div>
+            <style>
+                .col-sm-6 {
+                  display: flex;
+                  align-items: center;
+                }
+
+                .range-value {
+                  margin-left: 10px;
+                }
+            </style>
+           
+        </div>
+		<br>
+        <div class="input">
+            <input type="text" id="user" placeholder="Type your message here...">
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+    <div class="container">
+        <div class='footer row'>
+            <div class='col-md-8'>
+                <a>
+                    Division of Bioinformatics and Biostatistics, NCTR, 2023
+                </a>
+            </div>
+            <div class='col-md-2'>
+                <a href='#' >About</a>
+            </div>
+            <div class='col-md-2'>
+                <a href='#'>Disclaimer</a>
+            </div>    
+            
+        </div> 
+    </div>
+    
+    <script>
+        const origin_message = document.getElementById("messages").innerHTML;
+        
+        const messagesDiv = document.getElementById("messages");
+        const userInput = document.getElementById("user");
+        const sendBtn = document.getElementById("send-btn");
+        const csrfToken = messages.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        const history_check = document.getElementById("history_check");
+        var curr_msg = [];
+
+        
+        sendBtn.addEventListener("click", function() {
+            const userMessage = userInput.value.trim();
+            var userMessage_formatted = userMessage;
+            
+            const messages = messagesDiv.querySelectorAll('*');
+
+            let redoElements = document.getElementsByClassName("fa-redo");
+            if (redoElements){
+                for (let prev_redo of redoElements){
+                    prev_redo.style.color = 'gray';
+                    prev_redo.onclick=disabled_redo(this);
+                }
+            }
+            let history = '';
+            if (history_check.checked){
+                messages.forEach(message => {
+                    if (message.className == 'user'){
+                        history += `### Question:\n ${message.textContent}\n`;
+                    }else if (message.className == 'assistant'){
+                        history += `### Response:\n ${message.textContent}\n`;
+                    }
+
+                });
+                if (history.length > 2000){
+                    history = history.substring(history.length - 2000);
+                }
+            }
+            if (userMessage !== "") {
+                addUserMessage(userMessage);
+                sendUserMessage(userMessage_formatted, history, csrfToken);
+                userInput.value = "";
+            }
+        });
+        
+        function addUserMessage(message) {
+            const div = document.createElement("div");
+            div.classList.add("user");
+            div.innerText = message;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+        
+        function addBotMessage(message) {
+            const div = document.createElement("div");
+            div.classList.add("assistant");
+            let content = '';
+            let curr_ind = 0;
+            let item = message[curr_ind];
+            clean_msg = item[0];
+            let show_reference=''
+            if (item[4].length > 2000){
+                show_reference=item[1]+"<br>"+item[4].substring(0, 2000)+'...'
+            }else{
+                show_reference=item[1]+"<br>"+item[4]
+            }
+            content += '<div class="icon-container"><i class="fas fa-thumbs-up" onclick="saveFav(this)"></i>' +
+                       '<i class="fas fa-redo" onclick="changecontent(this, '+curr_ind+')"></i></div>'
+            content += '<br/><div class="tooltip_show"><a target="_blank" href="https://nctr-crs.fda.gov/fdalabel/services/spl/set-ids/'+item[1]+'/spl-doc">' + item[2] + 
+                    ' <b>(' + item[5]+ ')</b></a> <button href="#" data-text="'+show_reference+'" onclick=show_ref(this)>Show Reference</button> <p>' + clean_msg + '</p>';
+            // console.log(content)
+            div.innerHTML = content
+            messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+        }
+
+        function disabled_redo(iconElement){
+        }
+                
+        function changecontent(iconElement, past_ind) {
+            let parent = iconElement.parentNode.parentNode;
+            let content = '';
+            let curr_ind = (past_ind + 1) % curr_msg.length;
+            let item = curr_msg[curr_ind];
+            clean_msg = item[0];
+            let show_reference=''
+            if (item[4].length > 1000){
+                show_reference=item[1]+"<br>"+item[4].substring(0, 2000)+'...'
+            }else{
+                show_reference=item[1]+"<br>"+item[4]
+            }content +=  '<div class="icon-container"><i class="fas fa-thumbs-up" onclick="saveFav(this)"></i>' +
+                        '<i class="fas fa-redo" onclick="changecontent(this, '+curr_ind+')"></i></div>'
+            content += '<br/><div class="tooltip_show"><a target="_blank" href="https://nctr-crs.fda.gov/fdalabel/services/spl/set-ids/'+item[1]+'/spl-doc">' + item[2] + 
+                    ' <b>(' + item[5] + ')</b></a> <button href="#" data-text="'+show_reference+'" onclick=show_ref(this)>Show Reference</button> <p>' + clean_msg + '</p>';
+            // console.log(content)
+            parent.innerHTML = content;
+        }
+
+        function show_ref(refElement){
+            var div = document.getElementById("Reference");
+            if (div){
+                console.log('Found! '+div);
+                div.parentNode.removeChild(div);
+            }else{
+                div = document.createElement("div");
+                div.id = "Reference";
+                text = refElement.getAttribute('data-text');
+                div.innerHTML = '<a href="#" onclick=close_ref(this)>Close</a><br><p>'+text+'</p>';
+                console.log(div.innerHTML);
+                document.body.appendChild(div);
+            }
+        }
+
+        function close_ref(refElement){
+            let div = document.getElementById("Reference");
+            div.parentNode.removeChild(div);
+        }
+
+        function saveFav(iconElement){
+            if (iconElement.style.color == 'green'){
+                iconElement.style.color = 'black';
+            }else{
+                let current_block = iconElement.parentNode.parentNode;
+                let prev_block = current_block.previousElementSibling;
+                
+                let question = prev_block.textContent;
+                let link = current_block.getElementsByTagName("a")[0];
+                let content = current_block.getElementsByTagName("p")[0];
+                
+                console.log('Upvote\n--------\n' + question + '\n-------\n' + link.textContent + '\n-------\n' + content.textContent)
+                iconElement.style.color = 'green';
+            }
+            // let parent = iconElement.parentNode.parentNode;
+            
+        }
+        
+        function sendUserMessage(message, history, csrfToken) {
+            // Send an Ajax request to the Django server with the user message
+            const xhr = new XMLHttpRequest();
+            let submitButton = document.getElementById('send-btn');
+            const originalText = submitButton.textContent;
+            let loadingStates = ['.', '..', '...', '....'];
+            let currentIndex = 0;
+            let interval = setInterval(function() {
+                        submitButton.textContent = 'Running'+loadingStates[currentIndex];
+                        currentIndex = (currentIndex + 1) % loadingStates.length; // cycle through states
+                    }, 500);
+            submitButton.disabled = true; // disable the button to prevent multiple submissions
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                    clearInterval(interval); // stop the changing text
+                    submitButton.textContent = originalText; // reset the button text
+                    submitButton.disabled = false; // enable the button
+                    
+                    // Handle the response from the server
+                    let response = JSON.parse(xhr.responseText);
+                    // console.log(response);
+                    curr_msg = response.result;
+                    addBotMessage(curr_msg);
+                };
+            };
+            xhr.open('POST', 'response_demo/'); // Replace with your Django URL
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.setRequestHeader('X-CSRFToken', csrfToken);
+            const formData = new URLSearchParams();
+            formData.append('message', message);
+            formData.append('history', history+' ');
+            // console.log(formData.toString());
+            //formData.append('max_length', max_length);
+            //formData.append('temperature', temperature);
+            //formData.append('top_p', top_p);
+            xhr.send(formData.toString());
+        }
+        
+        function clearDiv() {
+            var div = document.getElementById("messages");
+            div.innerHTML = '<div class="System">Hello! I am LabelGPT&#128515;, here to help navigate the drug labeling documents. '+
+			    ' Try ask me questions like "what is the adverse reaction reported for abacavir?" '+
+                ' </div><div class="System">&#128526;&#128526;&#128526;<br>For exact drug search, please use curly bracket like "what is the adverse reaction reported for <i style="color:red">{abacavir}</i>?" '+
+                ' </div>'; // Clear the text content of the div
+            div.innerHTML = origin_message; 
+            // console.log(div.innerHTML)
+        }        
+        
+    </script>
+    
+</body>
+</html>
